@@ -7,7 +7,7 @@
 Install the CLI with Cargo:
 
 ```bash
-cargo install --git https://github.com/hellobdo/bdo-cli --tag v1.2.0
+cargo install --git https://github.com/hellobdo/bdo-cli
 ```
 
 This installs the `bdo` binary into Cargo's bin directory, usually `~/.cargo/bin`.
