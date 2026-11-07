@@ -17,14 +17,20 @@ fn main() -> ExitCode {
             }
         },
         Some("add") => {
-            let categories: Vec<&str> = args[1..].iter().map(String::as_str).collect();
+            let global = args[1..].iter().any(|arg| arg == "--global");
+            let categories: Vec<&str> = args[1..]
+                .iter()
+                .map(String::as_str)
+                .filter(|arg| *arg != "--global")
+                .collect();
             if categories.is_empty() {
-                eprintln!("Usage: {CLI_NAME} add <category>...");
+                eprintln!("Usage: {CLI_NAME} add <category>... [--global]");
                 Err("missing category".into())
             } else {
-                scripts::add::run(&categories)
+                scripts::add::run(&categories, global)
             }
         }
+        Some("skills") => scripts::skills::run(),
         Some("push") => scripts::push::run(),
         Some("branch") => match args.get(1) {
             Some(branch_name) => scripts::branch::run(branch_name),
@@ -58,7 +64,8 @@ fn main() -> ExitCode {
 fn show_help() {
     println!("Available commands:");
     println!("  {CLI_NAME} create <repo-name> - Create and initialize a new repository");
-    println!("  {CLI_NAME} add <category>... - Add AI directives (core, rust, python, ...) to this repository");
+    println!("  {CLI_NAME} add <category>... [--global] - Add AI directives (core, rust, python, ...) to this repository, or core to ~/.claude with --global");
+    println!("  {CLI_NAME} skills - List the categories and skills available to add");
     println!("  {CLI_NAME} push - Add, commit, and push changes");
     println!("  {CLI_NAME} branch <branch-name> - Create and push a new branch");
     println!("  {CLI_NAME} checkout - Reset to match remote main branch");

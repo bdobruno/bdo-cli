@@ -34,6 +34,9 @@ gh auth login
 - `bdo add <category>...` - Add AI directives from [ai-directives](https://github.com/bdobruno/ai-directives) to the current repository
   - `core` copies `core.md` to `.claude/core.md` and references it from `CLAUDE.md` and `AGENTS.md`
   - any skill category (`rust`, `python`, `react`, `dbt`, `shadcn`, ...) copies its skills to `.claude/skills/`
+  - must be run inside a git repository
+- `bdo add core --global` - Copy `core.md` to `~/.claude/core.md` and import it from `~/.claude/CLAUDE.md`, so Claude Code loads it in every project on this machine. Run it again to update.
+- `bdo skills` - List the categories and skills available to `bdo add`
 - `bdo push` - Add, commit, and push changes
 - `bdo branch <branch-name>` - Create and push a new branch
 - `bdo checkout` - Switch back to `main`, delete the previous branch, and reset `main` to `origin/main`

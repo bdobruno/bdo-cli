@@ -1,50 +1,85 @@
 use std::env;
+use std::error::Error;
 use std::fs;
 use std::path::Path;
+use std::process::Command;
 
-use super::{run_command, ScriptResult};
+use super::{clone_directives, subdirectory_names, ScriptResult};
 
 pub const DIRECTIVES_REPO: &str = "https://github.com/bdobruno/ai-directives";
 
-pub fn run(categories: &[&str]) -> ScriptResult {
-    add_from_repo(DIRECTIVES_REPO, &env::current_dir()?, categories)
-}
+pub type Report = Result<Vec<String>, Box<dyn Error>>;
 
-pub fn add_from_repo(repo_url: &str, target: &Path, categories: &[&str]) -> ScriptResult {
-    let clone = tempfile::tempdir()?;
-    let clone_path = clone.path().to_str().ok_or("invalid temp dir path")?;
-    run_command(
-        "git",
-        &["clone", "-q", "--depth", "1", repo_url, clone_path],
-    )?;
-
-    add_from(clone.path(), target, categories)
-}
-
-const CORE_IMPORT: &str = "@.claude/core.md";
-const AGENTS_POINTER: &str = "Follow the coding directives in `.claude/core.md`.";
-
-pub fn add_from(source: &Path, target: &Path, categories: &[&str]) -> ScriptResult {
-    validate_categories(categories, &available_categories(source)?)?;
-
-    for category in categories {
-        match *category {
-            "core" => add_core(source, target)?,
-            skill_category => add_skill_category(source, target, skill_category)?,
+pub fn run(categories: &[&str], global: bool) -> ScriptResult {
+    let report = if global {
+        let home = env::var("HOME")?;
+        let clone = clone_directives(DIRECTIVES_REPO)?;
+        add_global_from(clone.path(), Path::new(&home), categories)?
+    } else {
+        let target = env::current_dir()?;
+        if !is_git_repo(&target) {
+            return Err("not a git repository — run bdo add inside a project".into());
         }
+        add_from_repo(DIRECTIVES_REPO, &target, categories)?
+    };
+
+    for line in report {
+        println!("{line}");
     }
 
     Ok(())
 }
 
-fn available_categories(source: &Path) -> Result<Vec<String>, std::io::Error> {
-    let mut categories = vec!["core".to_string()];
-    for entry in fs::read_dir(source.join("skills"))? {
-        let path = entry?.path();
-        if path.is_dir() {
-            categories.push(path.file_name().unwrap().to_string_lossy().into_owned());
+fn is_git_repo(dir: &Path) -> bool {
+    Command::new("git")
+        .args(["rev-parse", "--is-inside-work-tree"])
+        .current_dir(dir)
+        .output()
+        .is_ok_and(|output| output.status.success())
+}
+
+pub fn add_from_repo(repo_url: &str, target: &Path, categories: &[&str]) -> Report {
+    let clone = clone_directives(repo_url)?;
+    add_from(clone.path(), target, categories)
+}
+
+pub fn add_global_from(source: &Path, home: &Path, categories: &[&str]) -> Report {
+    if categories.iter().any(|category| *category != "core") {
+        return Err("--global only supports core; skills are added per repository".into());
+    }
+
+    let claude_dir = home.join(".claude");
+    fs::create_dir_all(&claude_dir)?;
+    fs::copy(source.join("core.md"), claude_dir.join("core.md"))?;
+    ensure_line_in_file(&claude_dir.join("CLAUDE.md"), GLOBAL_CORE_IMPORT)?;
+
+    Ok(vec![installed(
+        "core",
+        "~/.claude/core.md, ~/.claude/CLAUDE.md",
+    )])
+}
+
+const CORE_IMPORT: &str = "@.claude/core.md";
+const GLOBAL_CORE_IMPORT: &str = "@~/.claude/core.md";
+const AGENTS_POINTER: &str = "Follow the coding directives in `.claude/core.md`.";
+
+pub fn add_from(source: &Path, target: &Path, categories: &[&str]) -> Report {
+    validate_categories(categories, &available_categories(source)?)?;
+
+    let mut report = Vec::new();
+    for category in categories {
+        match *category {
+            "core" => report.push(add_core(source, target)?),
+            skill_category => report.extend(add_skill_category(source, target, skill_category)?),
         }
     }
+
+    Ok(report)
+}
+
+fn available_categories(source: &Path) -> Result<Vec<String>, std::io::Error> {
+    let mut categories = subdirectory_names(&source.join("skills"))?;
+    categories.push("core".to_string());
     categories.sort();
 
     Ok(categories)
@@ -63,31 +98,41 @@ fn validate_categories(requested: &[&str], available: &[String]) -> Result<(), S
     }
 }
 
-fn add_core(source: &Path, target: &Path) -> ScriptResult {
+fn add_core(source: &Path, target: &Path) -> Result<String, Box<dyn Error>> {
     let claude_dir = target.join(".claude");
     fs::create_dir_all(&claude_dir)?;
     fs::copy(source.join("core.md"), claude_dir.join("core.md"))?;
     ensure_line_in_file(&target.join("CLAUDE.md"), CORE_IMPORT)?;
     ensure_line_in_file(&target.join("AGENTS.md"), AGENTS_POINTER)?;
 
-    Ok(())
+    Ok(installed("core", ".claude/core.md, CLAUDE.md, AGENTS.md"))
 }
 
-fn add_skill_category(source: &Path, target: &Path, category: &str) -> ScriptResult {
-    let skills_dir = target.join(".claude/skills");
+fn add_skill_category(source: &Path, target: &Path, category: &str) -> Report {
     let category_dir = source.join("skills").join(category);
-    if category_dir.join("SKILL.md").exists() {
-        return replace_dir(&category_dir, &skills_dir.join(category));
+    let skills = if category_dir.join("SKILL.md").exists() {
+        vec![category.to_string()]
+    } else {
+        subdirectory_names(&category_dir)?
+    };
+
+    let mut report = Vec::new();
+    for skill in skills {
+        let from = if skill == category {
+            category_dir.clone()
+        } else {
+            category_dir.join(&skill)
+        };
+        let relative = format!(".claude/skills/{skill}");
+        replace_dir(&from, &target.join(&relative))?;
+        report.push(installed(&skill, &relative));
     }
 
-    for entry in fs::read_dir(category_dir)? {
-        let skill = entry?.path();
-        if skill.is_dir() {
-            replace_dir(&skill, &skills_dir.join(skill.file_name().unwrap()))?;
-        }
-    }
+    Ok(report)
+}
 
-    Ok(())
+fn installed(name: &str, location: &str) -> String {
+    format!("✓ {name} → {location}")
 }
 
 fn replace_dir(from: &Path, to: &Path) -> ScriptResult {
