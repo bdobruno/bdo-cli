@@ -1,6 +1,7 @@
 pub mod branch;
 pub mod checkout;
 pub mod create;
+pub mod pr;
 pub mod push;
 
 use std::process::Command;

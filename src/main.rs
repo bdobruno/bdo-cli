@@ -25,6 +25,7 @@ fn main() -> ExitCode {
             }
         },
         Some("checkout") => scripts::checkout::run(),
+        Some("pr") => scripts::pr::run(),
         Some("help" | "--help" | "-h") | None => {
             show_help();
             Ok(())
@@ -51,5 +52,6 @@ fn show_help() {
     println!("  {CLI_NAME} push - Add, commit, and push changes");
     println!("  {CLI_NAME} branch <branch-name> - Create and push a new branch");
     println!("  {CLI_NAME} checkout - Reset to match remote main branch");
+    println!("  {CLI_NAME} pr - Open a pull request for the current branch");
     println!("  {CLI_NAME} help - Show this help message");
 }
