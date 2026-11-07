@@ -1,7 +1,7 @@
 use std::env;
 use std::process::ExitCode;
 
-mod scripts;
+use bdo_cli::scripts;
 
 const CLI_NAME: &str = "bdo";
 
@@ -16,6 +16,15 @@ fn main() -> ExitCode {
                 Err("missing repository name".into())
             }
         },
+        Some("add") => {
+            let categories: Vec<&str> = args[1..].iter().map(String::as_str).collect();
+            if categories.is_empty() {
+                eprintln!("Usage: {CLI_NAME} add <category>...");
+                Err("missing category".into())
+            } else {
+                scripts::add::run(&categories)
+            }
+        }
         Some("push") => scripts::push::run(),
         Some("branch") => match args.get(1) {
             Some(branch_name) => scripts::branch::run(branch_name),
@@ -49,6 +58,7 @@ fn main() -> ExitCode {
 fn show_help() {
     println!("Available commands:");
     println!("  {CLI_NAME} create <repo-name> - Create and initialize a new repository");
+    println!("  {CLI_NAME} add <category>... - Add AI directives (core, rust, python, ...) to this repository");
     println!("  {CLI_NAME} push - Add, commit, and push changes");
     println!("  {CLI_NAME} branch <branch-name> - Create and push a new branch");
     println!("  {CLI_NAME} checkout - Reset to match remote main branch");
