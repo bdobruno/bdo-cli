@@ -30,7 +30,10 @@ gh auth login
 ## Available Commands
 
 - `bdo help` - Show all available commands
-- `bdo create <repo-name>` - Create a local repository, make the initial commit, and create the GitHub repository
+- `bdo create <repo-name>` - Create a local repository with the core AI directives, make the initial commit, and create the GitHub repository
+- `bdo add <category>...` - Add AI directives from [ai-directives](https://github.com/bdobruno/ai-directives) to the current repository
+  - `core` copies `core.md` to `.claude/core.md` and references it from `CLAUDE.md` and `AGENTS.md`
+  - any skill category (`rust`, `python`, `react`, `dbt`, `shadcn`, ...) copies its skills to `.claude/skills/`
 - `bdo push` - Add, commit, and push changes
 - `bdo branch <branch-name>` - Create and push a new branch
 - `bdo checkout` - Switch back to `main`, delete the previous branch, and reset `main` to `origin/main`
