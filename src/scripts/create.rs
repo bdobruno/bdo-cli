@@ -30,7 +30,9 @@ pub fn create_local(repo_dir: &Path, directives_repo: &str) -> ScriptResult {
         repo_dir.join("README.md"),
         format!("# {}\n", dir_name(repo_dir)),
     )?;
-    add::add_from_repo(directives_repo, repo_dir, &["core"])?;
+    for line in add::add_from_repo(directives_repo, repo_dir, &["core"])? {
+        println!("{line}");
+    }
     run_command("git", &["-C", dir, "add", "."])?;
     run_command("git", &["-C", dir, "commit", "-m", "Initial commit"])?;
 

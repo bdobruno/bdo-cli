@@ -2,7 +2,7 @@ use std::fs;
 use std::path::Path;
 use std::process::Command;
 
-use bdo_cli::scripts::add::{add_from, add_from_repo};
+use bdo_cli::scripts::add::{add_from, add_from_repo, add_global_from};
 use tempfile::TempDir;
 
 fn git(dir: &Path, args: &[&str]) {
@@ -38,6 +38,24 @@ fn fake_directives() -> TempDir {
     .unwrap();
     fs::write(root.join("skills/dbt/SKILL.md"), "dbt\n").unwrap();
     dir
+}
+
+/// REQ-012
+#[test]
+fn adding_reports_each_installed_item_with_a_check_mark() {
+    let source = fake_directives();
+    let target = TempDir::new().unwrap();
+
+    let report = add_from(source.path(), target.path(), &["core", "rust"]).unwrap();
+
+    assert_eq!(
+        report,
+        [
+            "✓ core → .claude/core.md, CLAUDE.md, AGENTS.md",
+            "✓ rust-best-practices → .claude/skills/rust-best-practices",
+            "✓ rust-testing → .claude/skills/rust-testing",
+        ]
+    );
 }
 
 /// REQ-002
@@ -231,4 +249,49 @@ fn adding_from_a_repo_clones_it_and_adds_the_categories() {
     assert_eq!(core, "# Core coding directives\n");
     let dbt = fs::read_to_string(target.path().join(".claude/skills/dbt/SKILL.md")).unwrap();
     assert_eq!(dbt, "dbt\n");
+}
+
+/// REQ-014
+#[test]
+fn adding_core_globally_copies_core_md_into_home_claude_dir() {
+    let source = fake_directives();
+    let home = TempDir::new().unwrap();
+
+    let report = add_global_from(source.path(), home.path(), &["core"]).unwrap();
+
+    let copied = fs::read_to_string(home.path().join(".claude/core.md")).unwrap();
+    assert_eq!(copied, "# Core coding directives\n");
+    assert_eq!(report, ["✓ core → ~/.claude/core.md, ~/.claude/CLAUDE.md"]);
+}
+
+/// REQ-015
+#[test]
+fn adding_core_globally_imports_it_once_in_home_claude_md_keeping_existing_content() {
+    let source = fake_directives();
+    let home = TempDir::new().unwrap();
+    fs::create_dir_all(home.path().join(".claude")).unwrap();
+    fs::write(home.path().join(".claude/CLAUDE.md"), "- use uv run\n").unwrap();
+
+    add_global_from(source.path(), home.path(), &["core"]).unwrap();
+    add_global_from(source.path(), home.path(), &["core"]).unwrap();
+
+    let claude_md = fs::read_to_string(home.path().join(".claude/CLAUDE.md")).unwrap();
+    assert_eq!(claude_md, "- use uv run\n\n@~/.claude/core.md\n");
+    assert!(!home.path().join(".claude/AGENTS.md").exists());
+    assert!(!home.path().join("AGENTS.md").exists());
+}
+
+/// REQ-016
+#[test]
+fn adding_a_skill_category_globally_fails_and_writes_nothing() {
+    let source = fake_directives();
+    let home = TempDir::new().unwrap();
+
+    let error = add_global_from(source.path(), home.path(), &["core", "rust"]).unwrap_err();
+
+    assert_eq!(
+        error.to_string(),
+        "--global only supports core; skills are added per repository"
+    );
+    assert_eq!(fs::read_dir(home.path()).unwrap().count(), 0);
 }
