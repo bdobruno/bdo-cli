@@ -34,6 +34,7 @@ gh auth login
 - `bdo push` - Add, commit, and push changes
 - `bdo branch <branch-name>` - Create and push a new branch
 - `bdo checkout` - Switch back to `main`, delete the previous branch, and reset `main` to `origin/main`
+- `bdo pr` - Open a pull request for the current branch, filling the title and body from its commits
 
 ## Development
 
