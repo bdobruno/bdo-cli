@@ -1,0 +1,8 @@
+#!/bin/sh
+# Installed by cargo-husky on `cargo test`.
+# Keep Cargo.lock in sync with Cargo.toml, so CI's `cargo build --locked` passes
+# after a version bump. Only this crate's entries change; dependencies stay put.
+if git diff --cached --name-only | grep -qx 'Cargo.toml'; then
+    cargo update --workspace --quiet || exit 1
+    git add Cargo.lock
+fi

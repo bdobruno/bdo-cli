@@ -62,3 +62,12 @@ fn help_lists_skills_command_and_global_flag() {
     assert!(stdout.contains("bdo add <category>... [--global]"));
     assert!(stdout.contains("bdo skills"));
 }
+
+/// REQ-021
+#[test]
+fn help_lists_the_protect_main_command() {
+    let output = bdo(&["help"]);
+
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("bdo protect-main"));
+}
