@@ -51,3 +51,19 @@ fn protecting_an_already_protected_repo_updates_the_ruleset_in_place() {
         ]
     );
 }
+
+/// REQ-022
+#[test]
+fn protecting_without_admin_access_names_the_account_and_how_to_switch() {
+    let github = FakeGitHub::without_admin("me-at-work");
+
+    let error = protect::apply(&github, "me/my-repo").unwrap_err();
+
+    assert_eq!(
+        error.to_string(),
+        "you need admin access to me/my-repo to protect its default branch, \
+         but gh is logged in as me-at-work. Switch accounts with \
+         `gh auth switch` or `gh auth login`"
+    );
+    assert_eq!(github.rulesets(), []);
+}
