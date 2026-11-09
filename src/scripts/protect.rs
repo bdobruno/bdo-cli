@@ -2,7 +2,7 @@ use std::error::Error;
 
 use serde_json::Value;
 
-use super::github::{GhCli, GitHub};
+use super::github::{GhCli, GitHub, NotFound};
 use super::ScriptResult;
 
 pub const RULESET: &str = include_str!("../rulesets/protect-main.json");
@@ -20,10 +20,25 @@ pub fn apply(github: &impl GitHub, repo: &str) -> ScriptResult {
     let name = ruleset_name(RULESET)?;
     let existing = github.list_rulesets(repo)?;
 
-    match find_ruleset_id(&existing, &name)? {
+    let saved = match find_ruleset_id(&existing, &name)? {
         Some(id) => github.update_ruleset(repo, id, RULESET),
         None => github.create_ruleset(repo, RULESET),
+    };
+
+    match saved {
+        Err(error) if error.is::<NotFound>() => {
+            Err(missing_admin_message(repo, &github.current_user()?).into())
+        }
+        other => other,
     }
+}
+
+fn missing_admin_message(repo: &str, user: &str) -> String {
+    format!(
+        "you need admin access to {repo} to protect its default branch, \
+         but gh is logged in as {user}. Switch accounts with \
+         `gh auth switch` or `gh auth login`"
+    )
 }
 
 fn ruleset_name(ruleset: &str) -> Result<String, Box<dyn Error>> {
