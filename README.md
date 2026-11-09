@@ -41,6 +41,7 @@ gh auth login
 - `bdo branch <branch-name>` - Create and push a new branch
 - `bdo checkout` - Switch back to `main`, delete the previous branch, and reset `main` to `origin/main`
 - `bdo pr` - Open a pull request for the current branch, filling the title and body from its commits
+- `bdo protect-main` - Protect the repository's default branch with a GitHub ruleset: changes go through pull requests, and force pushes and deletion are blocked. Running it again updates the ruleset in place. The rules live in `src/rulesets/protect-main.json`. Requires admin access, and on private repos a paid GitHub plan
 
 ## Development
 

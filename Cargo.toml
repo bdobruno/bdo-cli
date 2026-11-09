@@ -1,6 +1,6 @@
 [package]
 name = "bdo-cli"
-version = "1.6.0"
+version = "1.7.0"
 edition = "2021"
 description = "BDO CLI tool for Git, GitHub, and development workflows"
 license = "MIT"
@@ -10,4 +10,10 @@ name = "bdo"
 path = "src/main.rs"
 
 [dependencies]
+serde_json = "1.0.154"
 tempfile = "3.27.0"
+
+[dev-dependencies.cargo-husky]
+version = "1"
+default-features = false
+features = ["user-hooks"]

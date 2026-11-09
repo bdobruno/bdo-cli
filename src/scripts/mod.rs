@@ -2,7 +2,9 @@ pub mod add;
 pub mod branch;
 pub mod checkout;
 pub mod create;
+pub mod github;
 pub mod pr;
+pub mod protect;
 pub mod push;
 pub mod skills;
 
